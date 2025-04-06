@@ -132,7 +132,8 @@ import zxcvbn from 'zxcvbn'
 import { useDebounceFn, useAsyncState } from '@vueuse/core'
 
 definePageMeta({
-  layout: 'auth'
+  layout: 'auth',
+  middleware: ['guest']
 })
 
 const { signUp, createOrganization, checkSubdomainAvailability } = useSupabase()

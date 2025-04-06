@@ -55,7 +55,8 @@
 
 <script setup lang="ts">
 definePageMeta({
-  layout: 'auth'
+  layout: 'auth',
+  middleware: ['guest']
 })
 
 const { signIn } = useSupabase()

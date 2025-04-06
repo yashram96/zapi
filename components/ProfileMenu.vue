@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div v-if="profile" class="relative">
     <button
       @click="isOpen = !isOpen"
       class="flex items-center space-x-2 rounded-full bg-muted/50 p-2 hover:bg-muted"
@@ -14,18 +14,18 @@
       class="absolute right-0 mt-2 w-48 rounded-md bg-background py-1 shadow-lg ring-1 ring-black ring-opacity-5"
     >
       <div class="px-4 py-2 text-sm">
-        <div class="font-medium">{{ profile?.name }}</div>
-        <div class="text-muted-foreground">{{ profile?.subdomain }}.getzapi.com</div>
+        <div class="font-medium">{{ profile.name }}</div>
+        <div class="text-muted-foreground">{{ profile.subdomain }}.getzapi.com</div>
       </div>
       <div class="border-t"></div>
       <NuxtLink
-        to="/dashboard"
+        :to="`/${profile.subdomain}/dashboard`"
         class="block px-4 py-2 text-sm hover:bg-muted"
       >
         Dashboard
       </NuxtLink>
       <NuxtLink
-        to="/dashboard/settings"
+        :to="`/${profile.subdomain}/dashboard/settings`"
         class="block px-4 py-2 text-sm hover:bg-muted"
       >
         Settings
@@ -48,7 +48,7 @@ const { supabase, signOut } = useSupabase()
 const router = useRouter()
 
 const isOpen = ref(false)
-const profile = ref<any>(null)
+const profile = useState('profile', () => null)
 
 const userInitials = computed(() => {
   if (!profile.value?.name) return ''

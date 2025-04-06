@@ -10,7 +10,21 @@ export const useSupabase = () => {
   )
 
   const user = ref(null)
+  const userRole = useState('userRole', () => null)
   const loading = ref(true)
+
+  const fetchUserRole = async (userId: string) => {
+    const { data } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', userId)
+      .single()
+    
+    if (data) {
+      userRole.value = data.role
+    }
+    return data?.role
+  }
 
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -25,11 +39,17 @@ export const useSupabase = () => {
       email,
       password,
     })
+    
+    if (data?.user) {
+      await fetchUserRole(data.user.id)
+    }
+    
     return { data, error }
   }
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
+    userRole.value = null
     return { error }
   }
 
@@ -74,10 +94,12 @@ export const useSupabase = () => {
   return {
     user,
     loading,
+    userRole,
     supabase,
     signUp,
     signIn,
     signOut,
+    fetchUserRole,
     createOrganization,
     checkSubdomainAvailability
   }

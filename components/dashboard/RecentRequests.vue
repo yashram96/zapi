@@ -1,10 +1,11 @@
 <template>
-  <div class="rounded-lg border bg-card">
+  <div class="rounded-lg border bg-card h-full">
     <div class="border-b p-6">
       <h2 class="text-lg font-medium">Recent Requests</h2>
+      <p class="mt-1 text-sm text-muted-foreground">Latest API calls to your endpoints</p>
     </div>
     
-    <div class="divide-y">
+    <div class="divide-y max-h-[400px] overflow-y-auto">
       <div v-for="request in recentRequests" :key="request.id" class="flex items-center space-x-4 p-4">
         <span :class="[
           'rounded px-2 py-1 text-xs font-medium',
