@@ -15,7 +15,7 @@
     >
       <div class="px-4 py-2 text-sm">
         <div class="font-medium">{{ profile?.name }}</div>
-        <div class="text-muted-foreground">{{ profile?.subdomain }}.zapi.dev</div>
+        <div class="text-muted-foreground">{{ profile?.subdomain }}.getzapi.com</div>
       </div>
       <div class="border-t"></div>
       <NuxtLink

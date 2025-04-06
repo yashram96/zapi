@@ -65,7 +65,7 @@
             <span v-if="subdomainStatus === 'checking'" class="text-muted-foreground">Checking...</span>
             <span v-else-if="subdomainStatus === 'available'" class="text-green-500">Available</span>
             <span v-else-if="subdomainStatus === 'unavailable'" class="text-red-500">Unavailable</span>
-            <span class="text-muted-foreground">.zapi.dev</span>
+            <span class="text-muted-foreground">.getzapi.com</span>
           </span>
         </div>
       </div>

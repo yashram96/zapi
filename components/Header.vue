@@ -31,7 +31,7 @@
             <Icon v-if="isDark" name="heroicons:sun" class="h-5 w-5" />
             <Icon v-else name="heroicons:moon" class="h-5 w-5" />
           </button>
-          <NuxtLink to="/dashboard" class="text-foreground/60 transition-colors hover:text-foreground">Dashboard</NuxtLink>
+          <a :href="dashboardUrl" class="text-foreground/60 transition-colors hover:text-foreground">Dashboard</a>
           <ProfileMenu />
         </div>
       </nav>
@@ -48,6 +48,7 @@ const user = ref(null)
 const mounted = ref(false)
 const isDark = useDark()
 const colorScheme = useStorage('color-scheme', 'light')
+const dashboardUrl = ref('')
 
 const toggleTheme = () => {
   isDark.value = !isDark.value
@@ -64,6 +65,29 @@ onMounted(() => {
   // Check auth state
   supabase.auth.getUser().then(({ data: { user: authUser } }) => {
     user.value = authUser
+    if (user.value) {
+      // Get user's organization
+      supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.value.id)
+        .single()
+        .then(({ data: memberData }) => {
+          if (memberData) {
+            // Get organization details
+            supabase
+              .from('organizations')
+              .select('subdomain')
+              .eq('id', memberData.organization_id)
+              .single()
+              .then(({ data: orgData }) => {
+                if (orgData) {
+                  dashboardUrl.value = `https://${orgData.subdomain}.getzapi.com/dashboard`
+                }
+              })
+          }
+        })
+    }
   })
 
   // Listen for auth changes

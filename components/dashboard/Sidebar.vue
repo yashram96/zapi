@@ -35,7 +35,7 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium text-foreground">{{ organization?.name }}</p>
-          <p class="truncate text-xs text-muted-foreground">{{ organization?.subdomain }}.zapi.dev</p>
+          <p class="truncate text-xs text-muted-foreground">{{ organization?.subdomain }}.getzapi.com</p>
         </div>
       </div>
     </div>
@@ -43,6 +43,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+
+import { ref, computed, onMounted } from 'vue'
+
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'heroicons:home' },
   { name: 'Endpoints', href: '/dashboard/endpoints', icon: 'heroicons:code-bracket' },
@@ -52,18 +56,41 @@ const navigation = [
   { name: 'Settings', href: '/dashboard/settings', icon: 'heroicons:cog-6-tooth' },
 ]
 
-// TODO: Replace with actual organization data from Supabase
-const organization = ref({
-  name: 'My Organization',
-  subdomain: 'myorg'
-})
+const { supabase } = useSupabase()
+const organization = ref(null)
 
 const orgInitials = computed(() => {
-  return organization.value.name
+  if (!organization.value?.name) return ''
+  return organization.value?.name
     .split(' ')
     .map(word => word[0])
     .join('')
     .toUpperCase()
     .slice(0, 2)
+})
+
+onMounted(async () => {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    // Get user's organization membership
+    const { data: memberData } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (memberData) {
+      // Get organization details
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('id', memberData.organization_id)
+        .single()
+
+      if (orgData) {
+        organization.value = orgData
+      }
+    }
+  }
 })
 </script>
