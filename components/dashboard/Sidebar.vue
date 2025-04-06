@@ -45,8 +45,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-import { ref, computed, onMounted } from 'vue'
-
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: 'heroicons:home' },
   { name: 'Endpoints', href: '/dashboard/endpoints', icon: 'heroicons:code-bracket' },
