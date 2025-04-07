@@ -70,7 +70,7 @@ export const useSupabase = () => {
         .insert([{ 
           organization_id: data.id,
           user_id: userData.user.id,
-          role: 'owner',
+          role: 'admin',
           username
         }])
     }
