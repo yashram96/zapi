@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isReady" class="flex min-h-screen">
+  <div v-if="mounted && user" class="flex min-h-screen">
     <Sidebar />
     <div class="flex-1 flex flex-col ml-64 relative">
       <div class="sticky top-0 z-40 flex justify-between items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,14 +20,14 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import Sidebar from '~/components/dashboard/Sidebar.vue'
 import ProfileMenu from '~/components/ProfileMenu.vue'
 import { useDark } from '@vueuse/core'
-import { ref, onMounted } from 'vue'
 
 const { supabase } = useSupabase()
 const isDark = useDark()
-const isReady = ref(false)
+const mounted = ref(false)
 const user = useState('user')
 
 const toggleTheme = async () => {
@@ -55,6 +55,6 @@ onMounted(async () => {
       isDark.value = profile.theme_preference === 'dark'
     }
   }
-  isReady.value = true
+  mounted.value = true
 })
 </script>

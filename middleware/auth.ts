@@ -1,26 +1,40 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  const { supabase } = useSupabase()
+  const supabase = useSupabaseClient()
   const config = useRuntimeConfig()
   const useSubdomains = config.public.useSubdomains
-  const userState = useState('user', () => null)
+  const userState = useState('user')
   const userRole = useState('userRole')
-  const organizationState = useState('organization', () => null)
+  const organizationState = useState('organization')
+  const isAuthChecking = useState('isAuthChecking', () => false)
 
-  // Get current session
-  const { data: { session }, error } = await supabase.auth.getSession()
-
-  if (!session) {
-    return navigateTo('/login')
+  // Prevent multiple simultaneous auth checks
+  if (isAuthChecking.value) {
+    return
   }
 
-  userState.value = session.user
-  
+  // Skip auth check if we already have user data
+  if (!userState.value) {
+    isAuthChecking.value = true
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (!session) {
+        isAuthChecking.value = false
+        return navigateTo('/login')
+      }
+
+      userState.value = session.user
+    } finally {
+      isAuthChecking.value = false
+    }
+  }
+
   // Fetch role if not already set
-  if (!userRole.value) {
+  if (!userRole.value && userState.value) {
     const { data } = await supabase
       .from('organization_members')
       .select('role')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userState.value.id)
       .single()
     
     if (data) {
@@ -32,47 +46,51 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const pathMatch = to.path.match(/^\/([^\/]+)\/dashboard/)
   const potentialSubdomain = pathMatch ? pathMatch[1] : null
 
-  // Get user's organization
-  const { data: memberData } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', session.user.id)
-    .single()
-
-  if (memberData) {
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('subdomain')
-      .eq('id', memberData.organization_id)
+  // Get user's organization if not already set
+  if (!organizationState.value && userState.value) {
+    const { data: memberData } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', userState.value.id)
       .single()
 
-    if (orgData) {
-      organizationState.value = orgData
-      const subdomain = orgData.subdomain
+    if (memberData) {
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('subdomain')
+        .eq('id', memberData.organization_id)
+        .single()
 
-      // Handle path-based routing
-      if (to.path.startsWith('/dashboard')) {
-        // Redirect to org-specific dashboard
-        return navigateTo(`/${subdomain}/dashboard`)
-      } else if (potentialSubdomain && potentialSubdomain !== subdomain) {
-        // Wrong org in URL, redirect to correct one
-        const newPath = to.path.replace(`/${potentialSubdomain}/`, `/${subdomain}/`)
-        return navigateTo(newPath)
-      }
-
-      // Ensure settings page uses the correct org path
-      if (to.path.includes('/settings') && !to.path.includes(`/${subdomain}/`)) {
-        return navigateTo(`/${subdomain}/dashboard/settings`)
+      if (orgData) {
+        organizationState.value = orgData
       }
     }
   }
 
+  // Handle routing based on organization
+  if (organizationState.value) {
+    const subdomain = organizationState.value.subdomain
+
+    // Handle path-based routing
+    if (to.path.startsWith('/dashboard')) {
+      return navigateTo(`/${subdomain}/dashboard`)
+    } else if (potentialSubdomain && potentialSubdomain !== subdomain) {
+      const newPath = to.path.replace(`/${potentialSubdomain}/`, `/${subdomain}/`)
+      return navigateTo(newPath)
+    }
+
+    // Ensure settings page uses the correct org path
+    if (to.path.includes('/settings') && !to.path.includes(`/${subdomain}/`)) {
+      return navigateTo(`/${subdomain}/dashboard/settings`)
+    }
+  }
+
   // Check if user needs to complete onboarding
-  if (to.path !== '/onboarding') {
+  if (to.path !== '/onboarding' && userState.value) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_completed')
-      .eq('id', session.user.id)
+      .eq('id', userState.value.id)
       .single()
 
     if (!profile?.onboarding_completed) {

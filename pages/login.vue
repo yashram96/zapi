@@ -59,7 +59,7 @@ definePageMeta({
   middleware: ['guest']
 })
 
-const { signIn } = useSupabase()
+const client = useSupabaseClient()
 const router = useRouter()
 
 const formData = ref({
@@ -75,7 +75,10 @@ const handleSubmit = async () => {
     error.value = ''
     isLoading.value = true
     
-    const { data, error: authError } = await signIn(formData.value.email, formData.value.password)
+    const { data, error: authError } = await client.auth.signInWithPassword({
+      email: formData.value.email,
+      password: formData.value.password
+    })
     
     if (authError) {
       if (authError.message === 'Invalid login credentials') {
