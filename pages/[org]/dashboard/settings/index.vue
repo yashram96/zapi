@@ -143,6 +143,7 @@ const loginHistory = ref([])
 const apiKeys = ref([])
 const projects = ref([])
 const webhooks = ref([])
+const user = ref(null)
 
 const availableIntegrations = [
   {
@@ -193,12 +194,31 @@ const saveOrganization = async (form: any) => {
 // API Key functions
 const createApiKey = async (form: any) => {
   try {
+    if (!user.value?.id || !organization.value?.id) {
+      console.error('User or organization not found')
+      return
+    }
+
+    // First get the organization member ID
+    const { data: memberData, error: memberError } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('user_id', user.value.id)
+      .eq('organization_id', organization.value.id)
+      .single()
+
+    if (memberError || !memberData) {
+      console.error('Error getting organization member:', memberError)
+      return
+    }
+
     const { data, error } = await supabase
       .from('api_keys')
       .insert([{
         organization_id: organization.value.id,
         name: form.name,
-        access_type: form.access_type
+        access_type: form.access_type,
+        created_by: memberData.id
       }])
       .select()
 
@@ -338,13 +358,15 @@ const transferOwnership = async (newOwnerId: string) => {
 // Load initial data
 onMounted(async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
+    const { data: { user: userData } } = await supabase.auth.getUser()
+    if (userData) {
+      user.value = userData
+
       // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userData.id)
         .single()
 
       if (profileData) {
@@ -354,7 +376,7 @@ onMounted(async () => {
       const { data: memberData } = await supabase
         .from('organization_members')
         .select('organization_id')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.id)
         .single()
 
       if (memberData) {

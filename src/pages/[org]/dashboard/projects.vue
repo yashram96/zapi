@@ -141,31 +141,6 @@
       <p class="text-muted-foreground">No projects found matching your search</p>
     </div>
 
-  <!-- Delete Confirmation Modal -->
-  <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
-    <div class="w-full max-w-md rounded-lg border bg-card p-6">
-      <h3 class="text-lg font-medium text-destructive">Delete Project</h3>
-      <p class="mt-2 text-sm text-muted-foreground">
-        Are you sure you want to delete this project? This action cannot be undone.
-      </p>
-      <div class="mt-6 flex justify-end space-x-2">
-        <button
-          @click="showDeleteModal = false"
-          class="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
-        >
-          Cancel
-        </button>
-        <button
-          @click="confirmDelete"
-          :disabled="isDeleting"
-          class="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-        >
-          {{ isDeleting ? 'Deleting...' : 'Delete Project' }}
-        </button>
-      </div>
-    </div>
-  </div>
-
     <!-- New/Edit Project Modal -->
     <div v-if="showNewProjectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
       <div class="w-full max-w-md rounded-lg border bg-card p-6">
@@ -187,10 +162,6 @@
             <div class="flex items-center rounded-lg border bg-background px-3 py-2">
               <span class="rounded bg-muted px-2 py-1 text-sm">/{{ organization?.subdomain }}/</span>
               <input
-                :class="{
-                  'text-green-600': pathStatus === 'available',
-                  'text-red-600': pathStatus === 'unavailable'
-                }"
                 v-model="form.api_name"
                 type="text"
                 placeholder="api-name"
@@ -199,34 +170,16 @@
               />
               <span class="rounded bg-muted px-2 py-1 text-sm">/api/</span>
               <input
-                :class="{
-                  'text-green-600': pathStatus === 'available',
-                  'text-red-600': pathStatus === 'unavailable'
-                }"
                 v-model="form.version"
                 type="text"
                 placeholder="v1"
                 class="w-16 bg-transparent border-0 focus:outline-none"
                 required
               />
-              <div class="ml-2 flex items-center">
-                <template v-if="pathStatus === 'checking'">
-                  <div class="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                </template>
-                <template v-else-if="pathStatus === 'available'">
-                  <Icon name="heroicons:check-circle" class="h-5 w-5 text-green-600" />
-                </template>
-                <template v-else-if="pathStatus === 'unavailable'">
-                  <Icon name="heroicons:x-circle" class="h-5 w-5 text-red-600" />
-                </template>
-              </div>
             </div>
             <div class="mt-1 flex space-x-4 text-xs">
               <p v-if="apiNameError" class="text-red-500">{{ apiNameError }}</p>
               <p v-if="versionError" class="text-red-500">{{ versionError }}</p>
-              <p v-if="pathStatus === 'unavailable'" class="text-red-500">
-                This API path is already in use
-              </p>
             </div>
           </div>
 
@@ -288,13 +241,8 @@ const isSubmitting = ref(false)
 const editingProject = ref(null)
 const searchQuery = ref('')
 const sortBy = ref('updated')
-const showDeleteModal = ref(false)
-const isDeleting = ref(false)
-const projectToDelete = ref<string | null>(null)
 const apiNameError = ref('')
 const versionError = ref('')
-const isCheckingPath = ref(false)
-const pathStatus = ref<'available' | 'unavailable' | 'checking' | null>(null)
 
 const form = reactive({
   name: '',
@@ -331,49 +279,14 @@ const formatApiName = (name: string) => {
     .replace(/^-+|-+$/g, '')
 }
 
-const checkPathAvailability = useDebounceFn(async () => {
-  if (!form.api_name || !form.version || apiNameError.value || versionError.value) {
-    pathStatus.value = null
-    return
-  }
-
-  const org = organization.value
-  if (!org?.id) return
-
-  try {
-    pathStatus.value = 'checking'
-    
-    // Don't check against the current project when editing
-    const query = supabase
-      .from('projects')
-      .select('id')
-      .eq('organization_id', org.id)
-      .eq('api_name', formatApiName(form.api_name))
-      .eq('version', form.version)
-
-    if (editingProject.value) {
-      query.neq('id', editingProject.value.id)
-    }
-
-    const { data } = await query.maybeSingle()
-    
-    pathStatus.value = data ? 'unavailable' : 'available'
-  } catch (error) {
-    console.error('Error checking path availability:', error)
-    pathStatus.value = null
-  }
-}, 300)
-
 // Watch api_name for validation
 watch(() => form.api_name, (newValue) => {
   apiNameError.value = validateApiName(newValue)
-  checkPathAvailability()
 })
 
 // Watch version for validation
 watch(() => form.version, (newValue) => {
   versionError.value = validateVersion(newValue)
-  checkPathAvailability()
 })
 
 const filteredProjects = computed(() => {
@@ -470,19 +383,13 @@ const handleSubmit = async () => {
       return
     }
 
-    // Check if path is available
-    if (pathStatus.value === 'unavailable') {
-      alert('This API path is already in use. Please choose a different name or version.')
-      return
-    }
-
     const formattedApiName = formatApiName(form.api_name)
     const projectData = {
       name: form.name.trim(),
       api_name: formattedApiName,
       description: form.description.trim(),
       version: form.version,
-      base_path: `${formattedApiName}/api/${form.version}`,
+      base_path: `${formattedApiName}/${form.version}`, // Fixed: Removed leading slash
       tags: form.tags.split(',').map(t => t.trim()).filter(Boolean)
     }
 
@@ -547,7 +454,7 @@ const duplicateProject = async (project: any) => {
         api_name: newApiName,
         description: project.description,
         version: project.version,
-        base_path: `${newApiName}/api/${project.version}`,
+        base_path: `${newApiName}/${project.version}`, // Fixed: Removed leading slash
         tags: project.tags,
         organization_id: org.id,
         is_favorite: project.is_favorite
@@ -575,30 +482,20 @@ const toggleFavorite = async (project: any) => {
   }
 }
 
-const deleteProject = (id: string) => {
-  projectToDelete.value = id
-  showDeleteModal.value = true
-}
+const deleteProject = async (id: string) => {
+  if (!confirm('Are you sure you want to delete this project?')) return
 
-const confirmDelete = async () => {
   try {
-    if (!projectToDelete.value) return
-    
-    isDeleting.value = true
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', projectToDelete.value)
+      .eq('id', id)
 
     if (error) throw error
     await loadProjects()
-    showDeleteModal.value = false
-    projectToDelete.value = null
   } catch (error) {
     console.error('Error deleting project:', error)
     alert('Failed to delete project')
-  } finally {
-    isDeleting.value = false
   }
 }
 

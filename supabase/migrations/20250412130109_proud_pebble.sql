@@ -1,0 +1,95 @@
+/*
+  # Create endpoints table and policies
+
+  1. New Tables
+    - `endpoints`
+      - `id` (uuid, primary key)
+      - `project_id` (uuid, foreign key)
+      - `method` (text - GET, POST, PUT, DELETE)
+      - `path` (text)
+      - `description` (text, nullable)
+      - `response_type` (text - json, xml, text)
+      - `response_body` (jsonb)
+      - `status_code` (integer)
+      - `headers` (jsonb)
+      - `active` (boolean)
+      - `created_at` (timestamp)
+      - `updated_at` (timestamp)
+
+  2. Security
+    - Enable RLS
+    - Add policies for organization members
+    - Add constraints and indexes
+*/
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Organization members can view endpoints" ON endpoints;
+DROP POLICY IF EXISTS "Organization admins and managers can manage endpoints" ON endpoints;
+
+-- Drop existing constraints if they exist
+DO $$ BEGIN
+  ALTER TABLE endpoints DROP CONSTRAINT IF EXISTS valid_method;
+  ALTER TABLE endpoints DROP CONSTRAINT IF EXISTS valid_response_type;
+  ALTER TABLE endpoints DROP CONSTRAINT IF EXISTS valid_status_code;
+  ALTER TABLE endpoints DROP CONSTRAINT IF EXISTS unique_project_path;
+EXCEPTION
+  WHEN undefined_object THEN NULL;
+END $$;
+
+-- Add constraints
+ALTER TABLE endpoints
+ADD CONSTRAINT valid_method CHECK (method IN ('GET', 'POST', 'PUT', 'DELETE')),
+ADD CONSTRAINT valid_response_type CHECK (response_type IN ('json', 'xml', 'text')),
+ADD CONSTRAINT valid_status_code CHECK (status_code BETWEEN 100 AND 599),
+ADD CONSTRAINT unique_project_path UNIQUE (project_id, method, path);
+
+-- Create indexes if they don't exist
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_endpoints_project_id') THEN
+    CREATE INDEX idx_endpoints_project_id ON endpoints(project_id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_endpoints_path') THEN
+    CREATE INDEX idx_endpoints_path ON endpoints(path);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_endpoints_active') THEN
+    CREATE INDEX idx_endpoints_active ON endpoints(active);
+  END IF;
+END $$;
+
+-- Create policies
+CREATE POLICY "Organization members can view endpoints"
+  ON endpoints
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM projects
+      JOIN organization_members ON organization_members.organization_id = projects.organization_id
+      WHERE projects.id = endpoints.project_id
+      AND organization_members.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Organization admins and managers can manage endpoints"
+  ON endpoints
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM projects
+      JOIN organization_members ON organization_members.organization_id = projects.organization_id
+      WHERE projects.id = endpoints.project_id
+      AND organization_members.user_id = auth.uid()
+      AND organization_members.role IN ('admin', 'manager')
+    )
+  );
+
+-- Create updated_at trigger if it doesn't exist
+DO $$ BEGIN
+  CREATE TRIGGER update_endpoints_updated_at
+    BEFORE UPDATE ON endpoints
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
