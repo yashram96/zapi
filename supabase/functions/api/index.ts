@@ -5,7 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
 }
-
 // Initialize Supabase client
 const supabase = useSupabaseClient()
 
@@ -68,9 +67,9 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Parse path components
-    // Format: /<org-subdomain>/<api-name>/api/v1/<endpoint-path>
-    const pathParts = path.split('/')
-    if (pathParts.length < 6) {
+    // Format: /<org-subdomain>/<api-name>/api/<version>/<endpoint-path>
+    const pathParts = path.split('/').filter(Boolean)
+    if (pathParts.length < 5) {
       return new Response(
         JSON.stringify({ error: 'Invalid API path' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -78,10 +77,10 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Extract components from path
-    const subdomain = pathParts[1]
-    const apiName = pathParts[2]
-    const version = pathParts[4]
-    const endpointPath = pathParts.slice(5).join('/')
+    const subdomain = pathParts[0]
+    const apiName = pathParts[1]
+    const version = pathParts[3]
+    const endpointPath = pathParts.slice(4).join('/')
 
     // Verify organization
     const { data: org, error: orgError } = await supabase
