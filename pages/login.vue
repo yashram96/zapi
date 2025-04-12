@@ -61,6 +61,7 @@ definePageMeta({
 
 const client = useSupabaseClient()
 const router = useRouter()
+const organization = useState('organization')
 
 const formData = ref({
   email: '',
@@ -90,7 +91,25 @@ const handleSubmit = async () => {
     }
 
     if (data) {
-      await router.push('/dashboard')
+      // Get user's organization
+      const { data: memberData } = await client
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', data.user.id)
+        .single()
+
+      if (memberData) {
+        const { data: orgData } = await client
+          .from('organizations')
+          .select('subdomain')
+          .eq('id', memberData.organization_id)
+          .single()
+
+        if (orgData) {
+          organization.value = orgData
+          await router.push(`/${orgData.subdomain}/dashboard`)
+        }
+      }
     }
   } catch (err) {
     error.value = 'An unexpected error occurred. Please try again later.'

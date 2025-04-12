@@ -5,7 +5,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   const userState = useState('user')
   const userRole = useState('userRole')
   const organizationState = useState('organization')
-  const isAuthChecking = useState('isAuthChecking', () => false)
+  const isAuthChecking = useState('isAuthChecking', () => false) 
+  const onboardingChecked = useState('onboardingChecked', () => false)
 
   // Prevent multiple simultaneous auth checks
   if (isAuthChecking.value) {
@@ -85,15 +86,16 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     }
   }
 
-  // Check if user needs to complete onboarding
-  if (to.path !== '/onboarding' && userState.value) {
+  // Only check onboarding status once and only if not already on onboarding page
+  if (!onboardingChecked.value && to.path !== '/onboarding' && userState.value) {
+    onboardingChecked.value = true
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_completed')
       .eq('id', userState.value.id)
       .single()
 
-    if (!profile?.onboarding_completed) {
+    if (profile && !profile.onboarding_completed) {
       return navigateTo('/onboarding')
     }
   }

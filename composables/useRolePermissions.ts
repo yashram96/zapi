@@ -1,4 +1,4 @@
-import { ref, computed, ComputedRef } from 'vue'
+import { ref, computed } from 'vue'
 
 export interface TabPermission {
   canView: boolean
@@ -14,7 +14,7 @@ export interface SettingsTab {
 }
 
 export const useRolePermissions = () => {
-  const { supabase } = useSupabase()
+  const supabase  = useSupabaseClient()
   const userRole = useState('userRole')
 
   const settingsTabs = computed<SettingsTab[]>(() => [
@@ -25,30 +25,19 @@ export const useRolePermissions = () => {
       permissions: {
         admin: { canView: true, canEdit: true },
         manager: { canView: true, canEdit: true },
-        editor: { canView: false, canEdit: false },
+        editor: { canView: true, canEdit: false },
         viewer: { canView: true, canEdit: false, isReadOnly: true }
       }
     },
     {
-      id: 'domain',
-      title: 'Domain Settings',
-      icon: 'heroicons:globe-alt',
-      permissions: {
-        admin: { canView: true, canEdit: true },
-        manager: { canView: false, canEdit: false },
-        editor: { canView: false, canEdit: false },
-        viewer: { canView: false, canEdit: false }
-      }
-    },
-    {
-      id: 'auth',
-      title: 'Auth Settings',
-      icon: 'heroicons:key',
+      id: 'profile',
+      title: 'Profile',
+      icon: 'heroicons:user',
       permissions: {
         admin: { canView: true, canEdit: true },
         manager: { canView: true, canEdit: true },
-        editor: { canView: false, canEdit: false },
-        viewer: { canView: false, canEdit: false }
+        editor: { canView: true, canEdit: true },
+        viewer: { canView: true, canEdit: true }
       }
     },
     {
@@ -57,7 +46,51 @@ export const useRolePermissions = () => {
       icon: 'heroicons:credit-card',
       permissions: {
         admin: { canView: true, canEdit: true },
-        manager: { canView: false, canEdit: false },
+        manager: { canView: true, canEdit: false },
+        editor: { canView: false, canEdit: false },
+        viewer: { canView: false, canEdit: false }
+      }
+    },
+    {
+      id: 'security',
+      title: 'Security',
+      icon: 'heroicons:shield-check',
+      permissions: {
+        admin: { canView: true, canEdit: true },
+        manager: { canView: true, canEdit: true },
+        editor: { canView: false, canEdit: false },
+        viewer: { canView: false, canEdit: false }
+      }
+    },
+    {
+      id: 'auth',
+      title: 'API Keys',
+      icon: 'heroicons:key',
+      permissions: {
+        admin: { canView: true, canEdit: true },
+        manager: { canView: true, canEdit: false },
+        editor: { canView: false, canEdit: false },
+        viewer: { canView: false, canEdit: false }
+      }
+    },
+    {
+      id: 'webhooks',
+      title: 'Webhooks',
+      icon: 'heroicons:bell',
+      permissions: {
+        admin: { canView: true, canEdit: true },
+        manager: { canView: true, canEdit: false },
+        editor: { canView: false, canEdit: false },
+        viewer: { canView: false, canEdit: false }
+      }
+    },
+    {
+      id: 'integrations',
+      title: 'Integrations',
+      icon: 'heroicons:puzzle-piece',
+      permissions: {
+        admin: { canView: true, canEdit: true },
+        manager: { canView: true, canEdit: false },
         editor: { canView: false, canEdit: false },
         viewer: { canView: false, canEdit: false }
       }
@@ -71,17 +104,6 @@ export const useRolePermissions = () => {
         manager: { canView: false, canEdit: false },
         editor: { canView: false, canEdit: false },
         viewer: { canView: false, canEdit: false }
-      }
-    },
-    {
-      id: 'profile',
-      title: 'User Profile',
-      icon: 'heroicons:user',
-      permissions: {
-        admin: { canView: true, canEdit: true },
-        manager: { canView: true, canEdit: true },
-        editor: { canView: true, canEdit: true },
-        viewer: { canView: true, canEdit: true }
       }
     }
   ])

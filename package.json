@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "nuxt": "^3.16.2",
+    "vue": "^3.4.21",
     "@nuxtjs/tailwindcss": "^6.11.4",
     "nuxt-icon": "^0.6.9",
     "@vueuse/nuxt": "^10.9.0",
@@ -20,7 +21,8 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "@nuxtjs/supabase": "^1.1.6",
-    "cookie": "0.7.2"
+    "cookie": "0.7.2",
+    "@vueuse/core": "^10.9.0"
   },"resolutions": {
   "cookie": "0.7.2"
 }

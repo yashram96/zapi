@@ -30,7 +30,7 @@ export const useSupabase = () => {
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password,
+      password
     })
     
     if (data?.user) {
