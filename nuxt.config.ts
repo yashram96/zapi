@@ -13,6 +13,8 @@ export default defineNuxtConfig({
   // ],
   runtimeConfig: {
     public: {
+      NUXT_PUBLIC_SUPABASE_URL: process.env.NUXT_PUBLIC_SUPABASE_URL,
+      NUXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
       useSubdomains: process.env.NUXT_PUBLIC_USE_SUBDOMAINS === 'true'
     }
   },
