@@ -99,11 +99,36 @@
 
 <script setup lang="ts">
 const supabase = useSupabaseClient()
-const organization = useState('organization')
+const user = useState('user')
+const organization = ref(null)
 const projects = ref<any[]>([])
 const showNewProjectModal = ref(false)
 const isSubmitting = ref(false)
 const editingProject = ref(null)
+
+const initializeOrganization = async () => {
+  if (!user.value?.id) return null
+  
+  const { data: memberData } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', user.value.id)
+    .single()
+
+  if (memberData) {
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', memberData.organization_id)
+      .single()
+    
+    if (orgData) {
+      organization.value = orgData
+      return orgData
+    }
+  }
+  return null
+}
 
 const form = reactive({
   name: '',
@@ -111,12 +136,13 @@ const form = reactive({
 })
 
 const loadProjects = async () => {
-  if (!organization.value?.id) return
+  const org = organization.value
+  if (!org?.id) return
   
   const { data, error } = await supabase
     .from('projects')
     .select('*')
-    .eq('organization_id', organization.value.id)
+    .eq('organization_id', org.id)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -132,8 +158,9 @@ const loadProjects = async () => {
 const handleSubmit = async () => {
   try {
     isSubmitting.value = true
+    const org = organization.value
 
-    if (!organization.value?.id) {
+    if (!org?.id) {
       alert('Organization not found. Please refresh the page.')
       return
     }
@@ -157,7 +184,7 @@ const handleSubmit = async () => {
       const { data, error } = await supabase
         .from('projects')
         .insert([{
-          organization_id: organization.value.id,
+          organization_id: org.id,
           name: form.name,
           description: form.description
         }])
@@ -165,7 +192,7 @@ const handleSubmit = async () => {
 
       if (error) throw error 
       if (data) {
-        projects.value = [data[0], ...projects.value]
+        await loadProjects() // Reload projects to ensure consistency
       }
     }
 
@@ -209,6 +236,7 @@ const closeModal = () => {
 }
 
 onMounted(async () => {
+  await initializeOrganization()
   await loadProjects()
 })
 </script>
