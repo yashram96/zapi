@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
         p_user_agent: getHeader(event, 'user-agent')
     })
 
-    7. Set response headers
+    // 7. Set response headers
     setHeaders(event, {
         'Content-Type': `application/${response_type}`,
         ...(headers || {})
