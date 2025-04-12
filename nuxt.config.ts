@@ -8,6 +8,9 @@ export default defineNuxtConfig({
     key: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY,
     redirect: false,
   },
+  // serverMiddleware: [
+  //   { path: '/', handler: '~/server/middleware/api.ts' },
+  // ],
   runtimeConfig: {
     public: {
       useSubdomains: process.env.NUXT_PUBLIC_USE_SUBDOMAINS === 'true'
@@ -30,13 +33,13 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { 
-          name: 'description', 
-          content: 'Create mock API endpoints with custom payloads, authentication, and status codes for frontend development.' 
+        {
+          name: 'description',
+          content: 'Create mock API endpoints with custom payloads, authentication, and status codes for frontend development.'
         }
       ],
       link: [
-        { 
+        {
           rel: 'stylesheet',
           href: 'https://fonts.cdnfonts.com/css/sf-pro-display'
         }

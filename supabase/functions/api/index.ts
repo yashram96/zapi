@@ -1,14 +1,14 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.8'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key',
 }
+
 // Initialize Supabase client
 const supabase = useSupabaseClient()
 
-async function validateApiKey(apiKey: string): Promise<{ valid: boolean, organizationId?: string }> {
+async function validateApiKey(apiKey: string): Promise<{ valid: boolean, organizationId?: string, apiKeyId?: string }> {
   try {
     // Get API key details
     const { data: keyData, error: keyError } = await supabase
@@ -29,7 +29,8 @@ async function validateApiKey(apiKey: string): Promise<{ valid: boolean, organiz
 
     return {
       valid: true,
-      organizationId: keyData.organization_id
+      organizationId: keyData.organization_id,
+      apiKeyId: keyData.id
     }
   } catch (error) {
     console.error('Error validating API key:', error)
@@ -47,6 +48,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const url = new URL(req.url)
     const path = url.pathname
     const method = req.method
+    const startTime = Date.now()
 
     // Get API key from header
     const apiKey = req.headers.get('x-api-key')
@@ -58,8 +60,8 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Validate API key
-    const { valid, organizationId } = await validateApiKey(apiKey)
-    if (!valid || !organizationId) {
+    const { valid, organizationId, apiKeyId } = await validateApiKey(apiKey)
+    if (!valid || !organizationId || !apiKeyId) {
       return new Response(
         JSON.stringify({ error: 'Invalid API key' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,7 +69,7 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Parse path components
-    // Format: /<org-subdomain>/<api-name>/api/<version>/<endpoint-path>
+    // Format: /<org>/<project>/api/<version>/<path>
     const pathParts = path.split('/').filter(Boolean)
     if (pathParts.length < 5) {
       return new Response(
@@ -79,6 +81,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // Extract components from path
     const subdomain = pathParts[0]
     const apiName = pathParts[1]
+    // Skip 'api' in the path
     const version = pathParts[3]
     const endpointPath = pathParts.slice(4).join('/')
 
@@ -124,11 +127,44 @@ async function handleRequest(req: Request): Promise<Response> {
       .single()
 
     if (endpointError || !endpoint) {
+      console.log('Endpoint not found:', {
+        project_id: project.id,
+        method,
+        path: endpointPath
+      })
       return new Response(
         JSON.stringify({ error: 'Endpoint not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Get request body if present
+    let requestBody = {}
+    if (req.body) {
+      try {
+        requestBody = await req.json()
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+
+    // Log the request
+    const duration = Date.now() - startTime
+    await supabase.rpc('log_api_request', {
+      p_organization_id: organizationId,
+      p_project_id: project.id,
+      p_endpoint_id: endpoint.id,
+      p_api_key_id: apiKeyId,
+      p_method: method,
+      p_path: endpointPath,
+      p_status_code: endpoint.status_code,
+      p_request_headers: Object.fromEntries(req.headers),
+      p_request_body: requestBody,
+      p_response_body: endpoint.response_body,
+      p_ip_address: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
+      p_user_agent: req.headers.get('user-agent'),
+      p_duration_ms: duration
+    })
 
     // Return configured response
     const headers = {
@@ -139,7 +175,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     return new Response(
       JSON.stringify(endpoint.response_body),
-      { 
+      {
         status: endpoint.status_code,
         headers
       }

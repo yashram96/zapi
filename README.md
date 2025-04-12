@@ -40,3 +40,15 @@ npm run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+
+
+# GET request
+curl -H "X-API-Key: zapi_4ac0f473ff95372c994cceb4b9b522059315361d481b1f7a" \
+  https://getzapi.com/kastack/pro/api/v1/users
+
+# POST request (requires write access)
+curl -X POST \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  https://myorg.getzapi.com/api/my-api/v1/users
