@@ -104,26 +104,45 @@ const endpointForm = ref(null)
 
 const handleSubmit = async () => {
   try {
-    if (!endpointForm.value) return
+    if (!endpointForm.value) {
+      console.error('Form reference not available')
+      return
+    }
     
     isSubmitting.value = true
-    const form = endpointForm.value.$data.form
+    const form = endpointForm.value.form // Access form directly from the component
+    
+    if (!form) {
+      console.error('Form data not available')
+      return
+    }
 
-    // Convert headers array to object
-    const headers = form.headers.reduce((acc: any, header: any) => {
-      if (header.key && header.value) {
-        acc[header.key] = header.value
-      }
-      return acc
-    }, {})
+    let parsedResponseBody
+    try {
+      parsedResponseBody = form.response_body ? JSON.parse(form.response_body) : {}
+    } catch (e) {
+      console.error('Invalid JSON in response body:', e)
+      alert('Invalid JSON format in response body')
+      return
+    }
+
+    // Convert headers array to object, handling the case where headers might be undefined
+    const headers = {}
+    if (Array.isArray(form.headers)) {
+      form.headers.forEach(header => {
+        if (header && header.key && header.value) {
+          headers[header.key] = header.value
+        }
+      })
+    }
 
     const updates = {
-      method: form.method,
+      method: form.method || 'GET',
       path: form.path,
-      description: form.description,
-      response_type: form.response_type,
-      status_code: form.status_code,
-      response_body: JSON.parse(form.response_body),
+      description: form.description || '',
+      response_type: form.response_type || 'json',
+      status_code: parseInt(form.status_code) || 200,
+      response_body: parsedResponseBody,
       headers
     }
 
@@ -132,13 +151,16 @@ const handleSubmit = async () => {
       .update(updates)
       .eq('id', endpoint.value.id)
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase error:', error)
+      throw error
+    }
 
     // Redirect to endpoints list
     router.push(`/${organization.value.subdomain}/dashboard/endpoints`)
   } catch (error) {
     console.error('Error updating endpoint:', error)
-    alert('Failed to update endpoint')
+    alert('Failed to update endpoint. Please check the console for details.')
   } finally {
     isSubmitting.value = false
   }
