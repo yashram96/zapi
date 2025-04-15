@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // 1. Get organization by subdomain
-    const { data: orgData, error: orgError } = await supabase
+    const { data: rpcData, error: orgError } = await supabase
         .rpc('get_endpoint_response_by_api_key', {
             p_api_key: apiKey,
             p_base_path: `${project}/api/${version}`,
@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
             p_path: path
         })
 
+    const orgData = rpcData?.[0] ?? {}
     const response_body = orgData.data
     const status_code = orgData.status_code
     const endpoint_id = orgData?.endpoint_id
@@ -38,16 +39,18 @@ export default defineEventHandler(async (event) => {
     const org_id = orgData?.org_id
     const project_id = orgData?.project_id
 
+    // // 5. Get request body if present
+    // if (event.method !== 'GET') {
+    //     try {
+    //         requestBody = await readBody(event)
 
-    // 5. Get request body if present
-    let requestBody = {}
-    if (event.method !== 'GET') {
-        try {
-            requestBody = await readBody(event)
-        } catch {
-            // Ignore parsing errors
-        }
-    }
+    //         console.log(requestBody)
+
+    //     } catch(error) {
+    //         console.log('Error reading request body',error)
+    //         // Ignore parsing errors
+    //     }
+    // }
 
     // 6. Log the request
     await supabase.rpc('log_api_request', {
@@ -59,7 +62,7 @@ export default defineEventHandler(async (event) => {
         p_path: path,
         p_status_code: status_code,
         p_request_headers: getHeaders(event),
-        p_request_body: requestBody,
+        p_request_body: 'requestBody',
         p_response_body: response_body,
         p_ip_address: getHeader(event, 'x-forwarded-for') || getHeader(event, 'x-real-ip'),
         p_user_agent: getHeader(event, 'user-agent')
@@ -67,11 +70,13 @@ export default defineEventHandler(async (event) => {
 
     // 7. Set response headers
     setHeaders(event, {
-        'Content-Type': `application/json`,
+        'Content-Type': `application/${response_type}`,
         ...(headers || {})
     })
 
+    console.log(response_type)
+
     // 8. Return response
     event.node.res.statusCode = parseInt(status_code, 10) || 500
-    return orgData
+    return response_body
 })
