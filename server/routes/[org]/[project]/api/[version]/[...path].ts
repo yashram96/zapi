@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
 
     // 7. Set response headers
     setHeaders(event, {
-        'Content-Type': `application/${response_type}`,
+        'Content-Type': `application/json`,
         ...(headers || {})
     })
 
