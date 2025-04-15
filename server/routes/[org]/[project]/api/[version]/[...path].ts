@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
     const orgData = rpcData?.[0] ?? {}
     const response_body = orgData.data
-    const status_code = orgData.status_code
+    const status_code = orgData.status
     const endpoint_id = orgData?.endpoint_id
     const headers = orgData?.headers
     const response_type = orgData?.response_type
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
         ...(headers || {})
     })
 
-    console.log(response_type)
+    // console.log(response_type)
 
     // 8. Return response
     event.node.res.statusCode = parseInt(status_code, 10) || 500
