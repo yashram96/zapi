@@ -81,6 +81,8 @@
               :projects="projects"
               @create="createApiKey"
               @delete="deleteApiKey"
+              @create-project="createProject"
+              @refresh="loadApiKeys"
             />
           </div>
 
@@ -176,6 +178,19 @@ const {
   isTabReadOnly
 } = useRolePermissions()
 
+const loadApiKeys = async () => {
+  if (!organization.value?.id) return
+
+  const { data: updatedKeys } = await supabase
+    .from('api_keys')
+    .select('*, api_key_projects(project:projects(*))')
+    .eq('organization_id', organization.value.id)
+
+  if (updatedKeys) {
+    apiKeys.value = updatedKeys
+  }
+}
+
 // Save organization changes
 const saveOrganization = async (form: any) => {
   try {
@@ -212,7 +227,8 @@ const createApiKey = async (form: any) => {
       return
     }
 
-    const { data, error } = await supabase
+    // Create the API key
+    const { data: keyData, error: keyError } = await supabase
       .from('api_keys')
       .insert([{
         organization_id: organization.value.id,
@@ -221,11 +237,28 @@ const createApiKey = async (form: any) => {
         created_by: memberData.id
       }])
       .select()
+      .single()
 
-    if (error) throw error
-    if (data) {
-      apiKeys.value.push(data[0])
+    if (keyError || !keyData) {
+      throw keyError
     }
+
+    // Create project mappings
+    if (form.project_ids.length > 0) {
+      const { error: projectError } = await supabase
+        .from('api_key_projects')
+        .insert(
+          form.project_ids.map((projectId: string) => ({
+            api_key_id: keyData.id,
+            project_id: projectId
+          }))
+        )
+
+      if (projectError) throw projectError
+    }
+
+    // Reload API keys with project data
+    await loadApiKeys()
   } catch (error) {
     console.error('Error creating API key:', error)
   }
@@ -242,6 +275,31 @@ const deleteApiKey = async (id: string) => {
     apiKeys.value = apiKeys.value.filter(key => key.id !== id)
   } catch (error) {
     console.error('Error deleting API key:', error)
+  }
+}
+
+// Create project function
+const createProject = async (form: any) => {
+  try {
+    if (!organization.value?.id) return
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([{
+        organization_id: organization.value.id,
+        name: form.name,
+        description: form.description,
+        api_name: form.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        version: 'v1'
+      }])
+      .select()
+
+    if (error) throw error
+    if (data) {
+      projects.value.push(data[0])
+    }
+  } catch (error) {
+    console.error('Error creating project:', error)
   }
 }
 
